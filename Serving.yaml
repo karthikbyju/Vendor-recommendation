@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ServingTemplate 
+metadata:
+  name: vendor-serve-pipeline   # ✅ Unique name for serving executable
+  annotations:
+    scenarios.ai.sap.com/name: "vendor-recommendation"
+    scenarios.ai.sap.com/description: "Vendor Recommendation Serving Pipeline"
+    executables.ai.sap.com/name: "Vendor Reco Server"
+    executables.ai.sap.com/description: "Serve model for vendor recommendation"
+    ext.ai.sap.com/islm_executable_type: "infer"   # Marks this as a serving (inference) executable
+    ext.ai.sap.com/islm_released_version: "true"
+  labels:
+    scenarios.ai.sap.com/id: "vendor-recommendation"
+    ai.sap.com/version: "2.0"
+spec :
+    template:
+    apiVersion: "serving.kserve.io/v1beta1"
+    metadata:
+      annotations: |
+        autoscaling.knative.dev/metric: concurrency   # condition when to scale
+        autoscaling.knative.dev/target: 1
+        autoscaling.knative.dev/targetBurstCapacity: 0
+      labels: |
+        ai.sap.com/resourcePlan: starter # computing power
+spec:
+  imagePullSecrets:
+    - name: bhuni    # Remove if image is public
+  entrypoint: servepipeline
+  templates:
+    - name: servepipeline
+      steps:
+        - - name: serve-model
+            template: vendor-reco-serve-step
+
+    - name: vendor-reco-serve-step
+      container:
+        image: docker.io/bhuni/vendor-final-app:latest   # Your serving Docker image
+        command: ["python"]
+        args:
+          - /app/src/app.py    # Entry point script for inference API
+        ports:
+          - name: http
+            containerPort: 8080
