@@ -22,9 +22,12 @@ spec :
         autoscaling.knative.dev/targetBurstCapacity: 0
       labels: |
         ai.sap.com/resourcePlan: starter # computing power
-spec:
+spec: |
+ predictor:
   imagePullSecrets:
     - name: bhuni    # Remove if image is public
+  minReplicas: 1
+  maxReplicas: 5
   entrypoint: servepipeline
   templates:
     - name: servepipeline
@@ -33,8 +36,12 @@ spec:
             template: vendor-reco-serve-step
 
     - name: vendor-reco-serve-step
-      container:
+      containers:
+        name: kserve-container
         image: docker.io/bhuni/vendor-final-app:latest   # Your serving Docker image
+        ports:
+          - containerPort: 9001    # customizable port
+            protocol: TCP
         command: ["python"]
         args:
           - /app/src/app.py    # Entry point script for inference API
